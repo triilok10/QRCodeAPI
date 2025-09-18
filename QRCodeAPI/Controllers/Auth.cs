@@ -30,5 +30,15 @@ namespace QRCodeAPI.Controllers
 
         }
         #endregion
+
+        #region "Login"
+        [HttpPost("Login")]
+        public async Task<ServiceResponse> Login(LoginMo pLoginMo)
+        {
+            var result = await _auth.Login(pLoginMo);
+            return result;
+
+        }
+        #endregion
     }
 }

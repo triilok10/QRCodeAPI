@@ -13,6 +13,8 @@ namespace BLL.Auth
             _connectionString = configuration.GetConnectionString("DBConnection");
         }
 
+
+        #region "Register"
         public async Task<ServiceResponse> Register(AuthMo pAuth)
         {
             ServiceResponse res = new ServiceResponse();
@@ -58,6 +60,67 @@ namespace BLL.Auth
 
             return res;
         }
+
+        #endregion
+
+        #region "Login"
+        public async Task<ServiceResponse> Login(LoginMo pLoginMo)
+        {
+            ServiceResponse res = new ServiceResponse();
+
+            try
+            {
+                using (SqlConnection con = new SqlConnection(_connectionString))
+                {
+                    await con.OpenAsync();
+
+                    using (SqlCommand cmd = new SqlCommand("usp_AuthLogin", con))
+                    {
+                        cmd.CommandType = System.Data.CommandType.StoredProcedure;
+
+                        cmd.Parameters.AddWithValue("@Action", "Login");
+                        cmd.Parameters.AddWithValue("@Username", pLoginMo.Username);
+                        cmd.Parameters.AddWithValue("@Password", pLoginMo.Password);
+
+                        using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                        {
+                            DataSet ds = new DataSet();
+                            da.Fill(ds);
+
+
+                            if(ds.Tables.Count> 0)
+                            {
+                                DataTable dt = new DataTable();
+                                DataTable dtJWT = new DataTable();
+                                dt = ds.Tables[0];
+                                dtJWT = ds.Tables[1];
+
+                                if (dt.Rows.Count > 0)
+                                {
+                                    var Status = Convert.ToInt32(dt.Rows[0]["Status"]);
+
+                                    if(Status == 200)
+                                    {
+                                        if (dtJWT.Rows.Count > 0)
+                                        {
+
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                res.Status = 500;
+                res.Message = ex.Message;
+            }
+
+            return res;
+        }
+        #endregion
 
     }
 }

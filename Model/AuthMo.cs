@@ -24,4 +24,17 @@ namespace Model
         public bool DeleteStatus { get; set; }
         
     }
+
+    public class LoginMo
+    {
+        public string Username { get; set; }
+        public string Password { get; set; }
+    }
+
+    public class JWT
+    {
+        public string Username { get; set; }
+        public int RoleID { get; set; }
+        public bool ActiveStatus { get; set; }
+    }
 }
