@@ -27,28 +27,25 @@ namespace BLL.Auth
                     {
                         cmd.CommandType = System.Data.CommandType.StoredProcedure;
 
+                        cmd.Parameters.AddWithValue("@Action", "Register");
                         cmd.Parameters.AddWithValue("@Username", pAuth.Username);
                         cmd.Parameters.AddWithValue("@FullName", pAuth.FullName);
                         cmd.Parameters.AddWithValue("@Email", pAuth.Email);
-                        cmd.Parameters.AddWithValue("@IsEmailVerified", pAuth.IsEmailVerified);
-                        cmd.Parameters.AddWithValue("@Gender", pAuth.Gender);
                         cmd.Parameters.AddWithValue("@MobileNo", pAuth.MobileNo);
+                        cmd.Parameters.AddWithValue("@Gender", pAuth.Gender);
+                        cmd.Parameters.AddWithValue("@IsEmailVerified", pAuth.IsEmailVerified);
                         cmd.Parameters.AddWithValue("@StateMasterId", pAuth.StateMasterId);
                         cmd.Parameters.AddWithValue("@MenuIds", pAuth.MenuIds);
                         cmd.Parameters.AddWithValue("@ProfileImage", pAuth.ProfileImage);
-                        cmd.Parameters.AddWithValue("@ActiveStatus", pAuth.ActiveStatus);
-                        cmd.Parameters.AddWithValue("@DeleteStatus", pAuth.DeleteStatus);
+                        cmd.Parameters.AddWithValue("@Password", pAuth.Password);
 
-                        using (SqlDataAdapter adapter = new SqlDataAdapter(cmd))
+                        using (SqlDataReader rdr = cmd.ExecuteReader()) 
                         {
-                            DataSet ds = new DataSet();
-                            adapter.Fill(ds); 
-                            res.Data = new
+                            while (rdr.Read()) 
                             {
-                                StateMaster = ds.Tables[0],    // First table
-                                UserDetail = ds.Tables[1],     // Second table
-                                StatusMessage = ds.Tables[2]   // Third table
-                            };
+                                res.Status = Convert.ToInt32(rdr["Status"]);
+                                res.Message = Convert.ToString(rdr["Message"]);
+                            }
                         }
                     }
                 }

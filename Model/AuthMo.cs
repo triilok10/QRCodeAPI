@@ -12,6 +12,7 @@ namespace Model
         public string Username { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
         public bool IsEmailVerified { get; set; } = false;
         public string MobileNo { get; set; } = string.Empty;
         public string Gender { get; set; } = string.Empty;
