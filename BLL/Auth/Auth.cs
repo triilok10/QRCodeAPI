@@ -1,4 +1,5 @@
-﻿using Microsoft.Data.SqlClient;
+﻿using BLL.Common;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using Model;
@@ -12,7 +13,8 @@ namespace BLL.Auth
     public class Auth : IAuth
     {
         public readonly string _connectionString;
-        public Auth(IConfiguration configuration)
+        private readonly ICommon _common;
+        public Auth(IConfiguration configuration, ICommon Common)
         {
             _connectionString = configuration.GetConnectionString("DBConnection");
         }
@@ -60,6 +62,7 @@ namespace BLL.Auth
             {
                 res.Status = 500;
                 res.Message = ex.Message;
+                await _common.LogError(ex, "Register", this.GetType().Name);
             }
 
             return res;
@@ -131,6 +134,7 @@ namespace BLL.Auth
             {
                 res.Status = 500;
                 res.Message = ex.Message;
+                await _common.LogError(ex, "Login", this.GetType().Name);
             }
 
             return res;
