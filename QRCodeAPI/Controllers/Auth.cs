@@ -10,8 +10,6 @@ namespace QRCodeAPI.Controllers
     [ApiController]
     public class Auth : ControllerBase
     {
-
-
         #region "Constructor"
         public readonly IAuth _auth;
         public Auth(IAuth auth, IConfiguration configuration)

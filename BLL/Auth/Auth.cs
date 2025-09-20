@@ -1,7 +1,11 @@
 ﻿using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
 using Model;
 using System.Data;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 namespace BLL.Auth
 {
@@ -103,7 +107,18 @@ namespace BLL.Auth
                                     {
                                         if (dtJWT.Rows.Count > 0)
                                         {
+                                            DataRow row = dtJWT.Rows[0];
 
+                                            JWT pJWT = new JWT
+                                            {
+                                                UserID = Convert.ToInt32(row["UserID"]),
+                                                Username = Convert.ToString(row["Username"]),
+                                                RoleID = Convert.ToInt32(row["RoleID"]),
+                                            };
+
+                                          res.Data =  await CreateAuthenticationToken(pJWT);
+                                          res.Status = 200;
+                                           
                                         }
                                     }
                                 }
@@ -122,5 +137,38 @@ namespace BLL.Auth
         }
         #endregion
 
+
+        #region "Auth Token Generate"
+        public async Task<JWT> CreateAuthenticationToken(JWT pJWT)
+        {
+            var key = Encoding.ASCII.GetBytes("fed0e14e-a076-4e77-9c2d-14545ce6fde3");
+            var JWToken = new JwtSecurityToken(
+            issuer: "Qrcode.com",
+            audience: "Qrcode.com",
+            claims: GetClaims(pJWT),
+            notBefore: new DateTimeOffset(DateTime.Now).DateTime,
+            expires: new DateTimeOffset(DateTime.Now.AddDays(1)).DateTime,
+            signingCredentials: new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+            );
+
+            var token = new JwtSecurityTokenHandler().WriteToken(JWToken);
+            pJWT.AuthToken = token;
+            return pJWT;
+        }
+
+        public IEnumerable<Claim> GetClaims(JWT ppJWT)
+        {
+            var claims = new List<Claim>
+                        {
+                            new Claim("RoleId", ppJWT.RoleID.ToString()),
+                            new Claim("Username", ppJWT.Username!.ToString()),
+                            new Claim("UserID", ppJWT.UserID.ToString()),
+                            new Claim("ActiveStatus", ppJWT.ActiveStatus.ToString())
+            };
+
+            return claims;
+        }
+
+        #endregion
     }
 }

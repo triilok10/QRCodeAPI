@@ -34,7 +34,9 @@ namespace Model
     public class JWT
     {
         public string Username { get; set; }
+        public int UserID { get; set; }
         public int RoleID { get; set; }
         public bool ActiveStatus { get; set; }
+        public string AuthToken { get; set; }
     }
 }
