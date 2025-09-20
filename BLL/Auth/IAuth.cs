@@ -9,7 +9,7 @@ namespace BLL.Auth
 {
     public interface IAuth
     {
-        Task<ServiceResponse> Register(AuthMo pAuth);
-        Task<ServiceResponse> Login(LoginMo pLogin);
+        Task<OperationResult<string>> Register(AuthMo pAuth);
+        Task<OperationResult<JWT>> Login(LoginMo pLoginMo);
     }
 }

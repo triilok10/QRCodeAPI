@@ -14,17 +14,16 @@ namespace BLL.Auth
     {
         public readonly string _connectionString;
         private readonly ICommon _common;
+
         public Auth(IConfiguration configuration, ICommon Common)
         {
             _connectionString = configuration.GetConnectionString("DBConnection");
+            _common = Common;
         }
 
-
         #region "Register"
-        public async Task<ServiceResponse> Register(AuthMo pAuth)
+        public async Task<OperationResult<string>> Register(AuthMo pAuth)
         {
-            ServiceResponse res = new ServiceResponse();
-
             try
             {
                 using (SqlConnection con = new SqlConnection(_connectionString))
@@ -33,7 +32,7 @@ namespace BLL.Auth
 
                     using (SqlCommand cmd = new SqlCommand("usp_AuthLogin", con))
                     {
-                        cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                        cmd.CommandType = CommandType.StoredProcedure;
 
                         cmd.Parameters.AddWithValue("@Action", "Register");
                         cmd.Parameters.AddWithValue("@Username", pAuth.Username);
@@ -47,12 +46,21 @@ namespace BLL.Auth
                         cmd.Parameters.AddWithValue("@ProfileImage", pAuth.ProfileImage);
                         cmd.Parameters.AddWithValue("@Password", pAuth.Password);
 
-                        using (SqlDataReader rdr = cmd.ExecuteReader()) 
+                        using (SqlDataReader rdr = await cmd.ExecuteReaderAsync())
                         {
-                            while (rdr.Read()) 
+                            if (await rdr.ReadAsync())
                             {
-                                res.Status = Convert.ToInt32(rdr["Status"]);
-                                res.Message = Convert.ToString(rdr["Message"]);
+                                int status = Convert.ToInt32(rdr["Status"]);
+                                string message = Convert.ToString(rdr["Message"]);
+
+                                if (status == 200)
+                                {
+                                    return OperationResult<string>.Success("Registered successfully", message);
+                                }
+                                else
+                                {
+                                    return OperationResult<string>.Failure(message);
+                                }
                             }
                         }
                     }
@@ -60,21 +68,17 @@ namespace BLL.Auth
             }
             catch (Exception ex)
             {
-                res.Status = 500;
-                res.Message = ex.Message;
                 await _common.LogError(ex, "Register", this.GetType().Name);
+                return OperationResult<string>.Failure(ex.Message);
             }
 
-            return res;
+            return OperationResult<string>.Failure("Unknown error occurred during registration");
         }
-
         #endregion
 
         #region "Login"
-        public async Task<ServiceResponse> Login(LoginMo pLoginMo)
+        public async Task<OperationResult<JWT>> Login(LoginMo pLoginMo)
         {
-            ServiceResponse res = new ServiceResponse();
-
             try
             {
                 using (SqlConnection con = new SqlConnection(_connectionString))
@@ -83,7 +87,7 @@ namespace BLL.Auth
 
                     using (SqlCommand cmd = new SqlCommand("usp_AuthLogin", con))
                     {
-                        cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                        cmd.CommandType = CommandType.StoredProcedure;
 
                         cmd.Parameters.AddWithValue("@Action", "Login");
                         cmd.Parameters.AddWithValue("@Username", pLoginMo.Username);
@@ -94,35 +98,33 @@ namespace BLL.Auth
                             DataSet ds = new DataSet();
                             da.Fill(ds);
 
-
-                            if(ds.Tables.Count> 0)
+                            if (ds.Tables.Count > 1)
                             {
-                                DataTable dt = new DataTable();
-                                DataTable dtJWT = new DataTable();
-                                dt = ds.Tables[0];
-                                dtJWT = ds.Tables[1];
+                                DataTable dt = ds.Tables[0];
+                                DataTable dtJWT = ds.Tables[1];
 
                                 if (dt.Rows.Count > 0)
                                 {
-                                    var Status = Convert.ToInt32(dt.Rows[0]["Status"]);
+                                    int status = Convert.ToInt32(dt.Rows[0]["Status"]);
 
-                                    if(Status == 200)
+                                    if (status == 200 && dtJWT.Rows.Count > 0)
                                     {
-                                        if (dtJWT.Rows.Count > 0)
+                                        DataRow row = dtJWT.Rows[0];
+
+                                        JWT pJWT = new JWT
                                         {
-                                            DataRow row = dtJWT.Rows[0];
+                                            UserID = Convert.ToInt32(row["UserID"]),
+                                            Username = Convert.ToString(row["Username"]),
+                                            RoleID = Convert.ToInt32(row["RoleID"]),
+                                            ActiveStatus = Convert.ToBoolean(row["ActiveStatus"])
+                                        };
 
-                                            JWT pJWT = new JWT
-                                            {
-                                                UserID = Convert.ToInt32(row["UserID"]),
-                                                Username = Convert.ToString(row["Username"]),
-                                                RoleID = Convert.ToInt32(row["RoleID"]),
-                                            };
-
-                                          res.Data =  await CreateAuthenticationToken(pJWT);
-                                          res.Status = 200;
-                                           
-                                        }
+                                        var token = await CreateAuthenticationToken(pJWT);
+                                        return OperationResult<JWT>.Success(token, "Login successful");
+                                    }
+                                    else
+                                    {
+                                        return OperationResult<JWT>.Failure("Error");
                                     }
                                 }
                             }
@@ -132,27 +134,25 @@ namespace BLL.Auth
             }
             catch (Exception ex)
             {
-                res.Status = 500;
-                res.Message = ex.Message;
                 await _common.LogError(ex, "Login", this.GetType().Name);
+                return OperationResult<JWT>.Failure(ex.Message);
             }
 
-            return res;
+            return OperationResult<JWT>.Failure("Login failed");
         }
         #endregion
-
 
         #region "Auth Token Generate"
         public async Task<JWT> CreateAuthenticationToken(JWT pJWT)
         {
             var key = Encoding.ASCII.GetBytes("fed0e14e-a076-4e77-9c2d-14545ce6fde3");
             var JWToken = new JwtSecurityToken(
-            issuer: "Qrcode.com",
-            audience: "Qrcode.com",
-            claims: GetClaims(pJWT),
-            notBefore: new DateTimeOffset(DateTime.Now).DateTime,
-            expires: new DateTimeOffset(DateTime.Now.AddDays(1)).DateTime,
-            signingCredentials: new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+                issuer: "Qrcode.com",
+                audience: "Qrcode.com",
+                claims: GetClaims(pJWT),
+                notBefore: DateTime.UtcNow,
+                expires: DateTime.UtcNow.AddDays(1),
+                signingCredentials: new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             );
 
             var token = new JwtSecurityTokenHandler().WriteToken(JWToken);
@@ -163,16 +163,15 @@ namespace BLL.Auth
         public IEnumerable<Claim> GetClaims(JWT ppJWT)
         {
             var claims = new List<Claim>
-                        {
-                            new Claim("RoleId", ppJWT.RoleID.ToString()),
-                            new Claim("Username", ppJWT.Username!.ToString()),
-                            new Claim("UserID", ppJWT.UserID.ToString()),
-                            new Claim("ActiveStatus", ppJWT.ActiveStatus.ToString())
+            {
+                new Claim("RoleId", ppJWT.RoleID.ToString()),
+                new Claim("Username", ppJWT.Username ?? ""),
+                new Claim("UserID", ppJWT.UserID.ToString()),
+                new Claim("ActiveStatus", ppJWT.ActiveStatus.ToString())
             };
 
             return claims;
         }
-
         #endregion
     }
 }
