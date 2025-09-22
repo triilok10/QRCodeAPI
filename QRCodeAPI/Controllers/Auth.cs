@@ -21,14 +21,20 @@ namespace QRCodeAPI.Controllers
 
         #region "Register"
         [HttpPost("register")]
-        public async Task<ActionResult<OperationResult<object>>> Register(AuthMo pAuth)
+        public async Task<ActionResult<OperationResult<string>>> Register(AuthMo pAuth)
         {
             var result = await _auth.Register(pAuth);
 
             if (result.State == OperationState.Success)
+            {
                 return Ok(result);
+            }
+            else
+            {
+                return Ok(result);
+            }
 
-            return BadRequest(result);
+               
         }
         #endregion
 
@@ -39,9 +45,13 @@ namespace QRCodeAPI.Controllers
             var result = await _auth.Login(pLoginMo);
 
             if (result.State == OperationState.Success)
+            {
                 return Ok(result);
-
-            return Unauthorized(result);
+            }
+            else
+            {
+                return Ok(result);
+            }
         }
         #endregion
     }

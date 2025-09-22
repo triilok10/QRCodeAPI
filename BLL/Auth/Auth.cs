@@ -3,6 +3,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using Model;
+using Newtonsoft.Json.Linq;
 using System.Data;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -127,6 +128,10 @@ namespace BLL.Auth
                                         return OperationResult<JWT>.Failure("Error");
                                     }
                                 }
+                            }
+                            else
+                            {
+                                return OperationResult<JWT>.Failure("Please enter the Correct Username or Password");
                             }
                         }
                     }
