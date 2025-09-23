@@ -16,4 +16,10 @@ namespace Model
         public int Status { get; set; }
         public dynamic Data { get; set; }
     }
+
+    public class StateList
+    {
+        public int StateID { get; set; }
+        public string StateName { get; set; }
+    }
 }

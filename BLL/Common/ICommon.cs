@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Azure;
+using Model;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -9,5 +11,6 @@ namespace BLL.Common
     public interface ICommon
     {
         Task LogError(Exception ex, string methodName = null, string className = null, object additionalData = null);
+        Task<OperationResult<List<StateList>>> GetStateList();
     }
 }

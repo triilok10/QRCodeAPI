@@ -1,12 +1,16 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Azure;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
+using Model;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
+using static Azure.Core.HttpHeader;
 
 namespace BLL.Common
 {
@@ -15,12 +19,15 @@ namespace BLL.Common
         #region "Connection String"
         public readonly string _ConnectionString;
         private readonly IHttpContextAccessor _httpContextAccessor; // Keep this for request context
+       
 
         public Common(IConfiguration configuration, IHttpContextAccessor httpContextAccessor)
         {
             _ConnectionString = configuration.GetConnectionString("DBConnection");
             _httpContextAccessor = httpContextAccessor;
         }
+
+
 
         #endregion
         public async Task LogError(Exception ex, string methodName = null, string className = null, object additionalData = null)
@@ -29,11 +36,11 @@ namespace BLL.Common
             string httpMethod = null;
             string userAgent = null;
             string ipAddress = null;
-            int? loggedInUserId = null; 
+            int? loggedInUserId = null;
 
             try
             {
-                
+
                 var httpContext = _httpContextAccessor.HttpContext;
                 if (httpContext != null)
                 {
@@ -55,7 +62,7 @@ namespace BLL.Common
                     cmd.Parameters.AddWithValue("@StackTrace", ex.StackTrace ?? (object)DBNull.Value);
                     cmd.Parameters.AddWithValue("@InnerExceptionMessage", ex.InnerException?.Message ?? (object)DBNull.Value);
                     cmd.Parameters.AddWithValue("@MethodName", methodName ?? (object)DBNull.Value);
-                    cmd.Parameters.AddWithValue("@ClassName", className ?? this.GetType().Name); 
+                    cmd.Parameters.AddWithValue("@ClassName", className ?? this.GetType().Name);
                     cmd.Parameters.AddWithValue("@RequestUrl", requestUrl ?? (object)DBNull.Value);
                     cmd.Parameters.AddWithValue("@HttpMethod", httpMethod ?? (object)DBNull.Value);
                     cmd.Parameters.AddWithValue("@UserAgent", userAgent ?? (object)DBNull.Value);
@@ -63,7 +70,7 @@ namespace BLL.Common
                     cmd.Parameters.AddWithValue("@LoggedInUserId", loggedInUserId ?? (object)DBNull.Value);
                     cmd.Parameters.AddWithValue("@AdditionalData", additionalData != null ? System.Text.Json.JsonSerializer.Serialize(additionalData) : (object)DBNull.Value);
 
-                    await cmd.ExecuteNonQueryAsync(); 
+                    await cmd.ExecuteNonQueryAsync();
                 }
             }
             catch (Exception logEx)
@@ -71,5 +78,55 @@ namespace BLL.Common
                 Console.WriteLine($"FATAL ERROR: Failed to log exception to database. Original exception: {ex.Message}. Logging exception: {logEx.Message}");
             }
         }
+
+
+        #region Get State List
+        public async Task<OperationResult<List<StateList>>> GetStateList()
+        {
+            List<StateList> lstState = new List<StateList>();
+            try
+            {
+                using (SqlConnection con = new SqlConnection(_ConnectionString))
+                {
+                    await con.OpenAsync(); // ✅ added await
+
+                    using (SqlCommand cmd = new SqlCommand("Usp_GetCommon", con))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@Action", "GetStateList");
+
+                        using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                        {
+                            DataSet ds = new DataSet();
+                            da.Fill(ds);
+
+                            if (ds.Tables.Count > 0)
+                            {
+                                DataTable dt = ds.Tables[0];
+
+                                if (dt != null && dt.Rows.Count > 0)
+                                {
+                                    lstState = dt.AsEnumerable().Select(row => new StateList
+                                    {
+                                        StateID = row.Field<int>("StateID"),
+                                        StateName = row.Field<string>("StateName")
+                                    }).ToList();
+                                }
+                            }
+                        }
+                    }
+                }
+
+                return OperationResult<List<StateList>>.Success(lstState, "State list fetched successfully");
+            }
+            catch (Exception ex)
+            {
+                await LogError(ex, "GetStateList", this.GetType().Name);
+                return OperationResult<List<StateList>>.Failure(ex.Message);
+            }
+        }
+
+
+        #endregion
     }
 }
