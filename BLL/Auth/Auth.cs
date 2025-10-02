@@ -25,8 +25,15 @@ namespace BLL.Auth
         #region "Register"
         public async Task<OperationResult<string>> Register(AuthMo pAuth)
         {
+            string filePath = string.Empty;
             try
             {
+
+                if(!string.IsNullOrWhiteSpace(pAuth.ProfileImageBase64))
+                {
+                    filePath = _common.UploadFile(pAuth.ProfileImageBase64, pAuth.ProfileImage, pAuth.ProfileImageName);
+                }
+
                 using (SqlConnection con = new SqlConnection(_connectionString))
                 {
                     await con.OpenAsync();

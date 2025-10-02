@@ -12,5 +12,6 @@ namespace BLL.Common
     {
         Task LogError(Exception ex, string methodName = null, string className = null, object additionalData = null);
         Task<OperationResult<List<StateList>>> GetStateList();
+         string UploadFile(string base64, string fileName, string fileExtension);
     }
 }

@@ -9,6 +9,7 @@ using System.Data;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using static Azure.Core.HttpHeader;
 
@@ -88,7 +89,7 @@ namespace BLL.Common
             {
                 using (SqlConnection con = new SqlConnection(_ConnectionString))
                 {
-                    await con.OpenAsync(); // ✅ added await
+                    await con.OpenAsync();
 
                     using (SqlCommand cmd = new SqlCommand("Usp_GetCommon", con))
                     {
@@ -128,5 +129,43 @@ namespace BLL.Common
 
 
         #endregion
+
+
+        //Used to upload the file
+        #region "File Upload"
+        public  string UploadFile(string base64, string fileName, string fileExtension)
+        {
+            
+            Regex regex = new Regex(@"^[\w/\:.-]+;base64,");
+            base64 = regex.Replace(base64, string.Empty);
+            byte[] fileBytes = Convert.FromBase64String(base64);
+
+            // folder path
+            string folderPath = Path.Combine(Directory.GetCurrentDirectory(), "UploadedFiles");
+
+            // filename
+            long unixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            string uniqueId = unixTimestamp + "_" + new Random().Next(1000, 9999);
+
+            string nameWithoutExt = Path.GetFileNameWithoutExtension(fileName)
+                                              .Replace(" ", "_");
+
+            if (!fileExtension.StartsWith("."))
+                fileExtension = "_" + fileExtension;
+
+            string finalFileName = $"{uniqueId}_{nameWithoutExt}{fileExtension}";
+
+            if (!Directory.Exists(folderPath))
+            {
+                Directory.CreateDirectory(folderPath);
+            }
+            string filePath = Path.Combine(folderPath, finalFileName);
+
+            System.IO.File.WriteAllBytes(filePath, fileBytes);
+
+            return finalFileName;
+        }
+        #endregion
+
     }
 }
